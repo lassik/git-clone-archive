@@ -215,6 +215,30 @@ static void write_to_stdout(void *buf, size_t len)
     }
 }
 
+static char path[4096];
+
+static void path_truncate(char *limit)
+{
+    memset(limit, 0, sizeof(path) - (limit - path));
+}
+
+static char *path_append(const char *name)
+{
+    char *a;
+    char *b;
+    int room;
+
+    a = b = strchr(path, 0);
+    if (b > path) {
+        *b++ = '/';
+    }
+    room = sizeof(path) - (b - path);
+    if (snprintf(b, room, "%s", name) >= room) {
+        fatal("pathname too long");
+    }
+    return a;
+}
+
 static unsigned long sum_bytes(unsigned char *bytes, size_t nbyte)
 {
     unsigned long ans = 0;
@@ -332,30 +356,6 @@ static char *get_tmpdir(void)
     }
     *limit = 0;
     return string;
-}
-
-static char path[4096];
-
-static void path_truncate(char *limit)
-{
-    memset(limit, 0, sizeof(path) - (limit - path));
-}
-
-static char *path_append(const char *name)
-{
-    char *a;
-    char *b;
-    int room;
-
-    a = b = strchr(path, 0);
-    if (b > path) {
-        *b++ = '/';
-    }
-    room = sizeof(path) - (b - path);
-    if (snprintf(b, room, "%s", name) >= room) {
-        fatal("pathname too long");
-    }
-    return a;
 }
 
 static void delete_temp_dir(void);
