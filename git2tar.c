@@ -1,6 +1,7 @@
 // Copyright 2020 Lassi Kortela
 // SPDX-License-Identifier: ISC
 
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #include <dirent.h>
@@ -22,6 +23,8 @@ struct ent {
     char *git_object_hash;
     char *file_name;
 };
+
+static unsigned int vflags = 2;
 
 static void fatal(const char *msg)
 {
@@ -331,6 +334,93 @@ static char *get_tmpdir(void)
     return string;
 }
 
+static char path[4096];
+
+static void path_truncate(char *limit)
+{
+    memset(limit, 0, sizeof(path) - (limit - path));
+}
+
+static char *path_append(const char *name)
+{
+    char *a;
+    char *b;
+    int room;
+
+    a = b = strchr(path, 0);
+    if (b > path) {
+        *b++ = '/';
+    }
+    room = sizeof(path) - (b - path);
+    if (snprintf(b, room, "%s", name) >= room) {
+        fatal("pathname too long");
+    }
+    return a;
+}
+
+static void delete_temp_dir(void);
+
+static void delete_temp_ent(void)
+{
+    static struct stat st;
+
+    if (lstat(path, &st) == -1) {
+        fatal_errno("cannot get info for temp file");
+    }
+    if (S_ISDIR(st.st_mode)) {
+        delete_temp_dir();
+        if (vflags >= 2) {
+            fprintf(stderr, "rmdir %s\n", path);
+        }
+        if (rmdir(path) == -1) {
+            fatal_errno("cannot delete temp directory");
+        }
+    } else {
+        if (vflags >= 2) {
+            fprintf(stderr, "unlink %s\n", path);
+        }
+        if (unlink(path) == -1) {
+            fatal_errno("cannot delete temp file");
+        }
+    }
+}
+
+static void delete_temp_dir(void)
+{
+    DIR *dir;
+    struct dirent *d;
+    char *name;
+    char *pivot;
+
+    if (!(dir = opendir(path))) {
+        fatal_errno("cannot open directory");
+    }
+    for (;;) {
+        errno = 0;
+        if (!(d = readdir(dir)))
+            break;
+        name = d->d_name;
+        if (!strcmp(name, ".") || !strcmp(name, ".."))
+            continue;
+        pivot = path_append(name);
+        delete_temp_ent();
+        path_truncate(pivot);
+    }
+    if (errno) {
+        fatal_errno("cannot list directory");
+    }
+    if (closedir(dir) == -1) {
+        fatal_errno("cannot close directory");
+    }
+}
+
+static void delete_temp_files(const char *template)
+{
+    path_truncate(path);
+    path_append(template);
+    delete_temp_ent();
+}
+
 int main(int argc, char **argv)
 {
     char template[] = "git2tar-XXXXXXXX";
@@ -352,7 +442,9 @@ int main(int argc, char **argv)
     if (!mkdtemp(template)) {
         fatal_errno("cannot create temporary directory");
     }
-    fprintf(stderr, "%s: %s/%s\n", PROGNAME, tmpdir, template);
+    if (vflags >= 1) {
+        fprintf(stderr, "%s: %s/%s\n", PROGNAME, tmpdir, template);
+    }
     git_clone(url, template);
     if ((parentdir = open(".", O_RDONLY | O_DIRECTORY)) == -1) {
         fatal_errno("cannot open directory");
@@ -364,5 +456,6 @@ int main(int argc, char **argv)
     if (fchdir(parentdir) == -1) {
         fatal_errno("cannot change directory");
     }
+    delete_temp_files(template);
     return 0;
 }
