@@ -288,12 +288,15 @@ static void generate_tar_blob(struct ent *ent)
 {
     char *blob;
     char *checksum;
+    char *pivot;
     size_t blobsize, i;
 
     git_show(ent->git_object_hash, &blob, &blobsize);
     memset(tar_header, 0, 512);
     tar = tar_header;
-    tar_string(100, ent->file_name);
+    pivot = path_append(ent->file_name);
+    tar_string(100, path);
+    path_truncate(pivot);
     tar_octal(8, ent->unix_file_mode);
     tar_octal(8, TAR_UID);
     tar_octal(8, TAR_GID);
@@ -315,13 +318,11 @@ static void generate_tar_blob(struct ent *ent)
     write_to_stdout(null_bytes, 512 - (blobsize % 512));
 }
 
-static void generate_tar_file(void)
+static void generate_tar_tree(const char *hash)
 {
     struct ent *ent;
-    char *hash;
     char *tree;
 
-    hash = git_rev_parse("HEAD");
     tree = git_ls_tree(hash);
     while ((tree = parse_ls_tree_entry(tree, &ent))) {
         if (!strcmp(ent->git_object_type, "blob")) {
@@ -333,6 +334,14 @@ static void generate_tar_file(void)
         }
     }
     free(tree);
+}
+
+static void generate_tar_file(void)
+{
+    char *hash;
+
+    hash = git_rev_parse("HEAD");
+    generate_tar_tree(hash);
     free(hash);
     write_to_stdout(null_bytes, 512);
     write_to_stdout(null_bytes, 512);
