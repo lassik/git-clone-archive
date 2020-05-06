@@ -253,6 +253,14 @@ static char *parse_ls_tree_entry(char *tree, struct ent **out_ent)
     return tree;
 }
 
+static void free_ls_tree_entry(struct ent *ent)
+{
+    free(ent->git_object_type);
+    free(ent->git_object_hash);
+    free(ent->file_name);
+    free(ent);
+}
+
 static void write_to_stdout(void *buf, size_t len)
 {
     if (write(STDOUT_FILENO, buf, len) != (ssize_t)len) {
@@ -379,6 +387,7 @@ static void generate_tar_tree(const char *hash)
         } else {
             fprintf(stderr, "warning: skipping %s\n", ent->git_object_type);
         }
+        free_ls_tree_entry(ent);
     }
     free(tree);
 }
