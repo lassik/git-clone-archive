@@ -120,7 +120,7 @@ static void outrun(const char **argv, char **out_buf, size_t *out_len)
         if (!nread) {
             break;
         }
-        buf_len += nread;
+        buf_len += (size_t)nread;
     }
     close(outpipe[0]);
     finish(child);
@@ -216,7 +216,7 @@ static char *scan_until(char *str, char **out_span, int sentinel)
     if (!(limit = strchr(str, sentinel))) {
         fatal("cannot parse");
     }
-    len = limit - str;
+    len = (size_t)(limit - str);
     if (!(span = calloc(1, len + 1))) {
         fatal("out of memory");
     }
@@ -275,21 +275,21 @@ static char path[4096];
 
 static void path_truncate(char *limit)
 {
-    memset(limit, 0, sizeof(path) - (limit - path));
+    memset(limit, 0, sizeof(path) - (size_t)(limit - path));
 }
 
 static char *path_append(const char *name)
 {
     char *pivot;
     char *add;
-    int room;
+    size_t room;
 
     pivot = add = strchr(path, 0);
     if (add > path) {
         *add++ = '/';
     }
-    room = sizeof(path) - (add - path);
-    if (snprintf(add, room, "%s", name) >= room) {
+    room = sizeof(path) - (size_t)(add - path);
+    if ((size_t)snprintf(add, room, "%s", name) >= room) {
         fatal("pathname too long");
     }
     return pivot;
@@ -327,7 +327,8 @@ static void tar_octal(size_t width, unsigned long value)
     size_t ndigit, nzero;
     char digits[width];
 
-    if ((ndigit = snprintf(digits, sizeof(digits), "%lo", value)) >= width) {
+    ndigit = (size_t)snprintf(digits, sizeof(digits), "%lo", value);
+    if (ndigit >= width) {
         fatal("tar limit exceeded");
     }
     for (nzero = width - 1 - ndigit; nzero; nzero--) {
