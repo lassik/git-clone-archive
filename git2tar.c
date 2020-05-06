@@ -32,20 +32,31 @@ struct ent {
     char *file_name;
 };
 
+static char clonedir[] = PROGNAME "-XXXXXXXX";
 static const char *prefix = PROGNAME "/";
 static unsigned int vflags;
 static int null_device;
+static int cleanupdir;
+static int should_cleanup;
+
+static void cleanup(void);
+
+static void exit_with_cleanup(int code)
+{
+    cleanup();
+    exit(code);
+}
 
 static void fatal(const char *msg)
 {
     fprintf(stderr, "%s: %s\n", PROGNAME, msg);
-    exit(2);
+    exit_with_cleanup(2);
 }
 
 static void fatal_errno(const char *msg)
 {
     fprintf(stderr, "%s: %s: %s\n", PROGNAME, msg, strerror(errno));
-    exit(2);
+    exit_with_cleanup(2);
 }
 
 static void finish(pid_t child)
@@ -485,8 +496,18 @@ static void delete_temp_dir(void)
     }
 }
 
-static void delete_temp_files(const char *clonedir)
+static void cleanup(void)
 {
+    if (!should_cleanup) {
+        return;
+    }
+    should_cleanup = 0;
+    if (vflags >= 1) {
+        fprintf(stderr, "%s: cleaning up temp files\n", PROGNAME);
+    }
+    if (fchdir(cleanupdir) == -1) {
+        fatal_errno("cannot change directory");
+    }
     path_truncate(path);
     path_append(clonedir);
     delete_temp_ent();
@@ -503,7 +524,7 @@ static void generic_usage(FILE *stream, int code)
         "-V, --version       Write version and exit.\n"
         "-h, --help          Write this usage and exit.\n",
         PROGNAME);
-    exit(code);
+    exit_with_cleanup(code);
 }
 
 static void usage(void) { generic_usage(stderr, 2); }
@@ -512,7 +533,7 @@ static void version(void)
 {
     printf("%s %s\n", PROGNAME, PROGRELEASE);
     printf("commit %s\n", PROGGIT[0] ? PROGGIT : "unknown");
-    exit(0);
+    exit_with_cleanup(0);
 }
 
 static char **parse_short_option(int option, char **argv)
@@ -577,11 +598,9 @@ static char **parse_options(char **argv)
 
 int main(int argc, char **argv)
 {
-    char clonedir[] = PROGNAME "-XXXXXXXX";
     char *tmpdir;
     const char *url;
     const char *branch;
-    int parentdir;
 
     (void)argc;
     argv++;
@@ -625,9 +644,13 @@ int main(int argc, char **argv)
     if (chdir(tmpdir) == -1) {
         fatal_errno("cannot change directory");
     }
+    if ((cleanupdir = open(".", O_RDONLY | O_DIRECTORY)) == -1) {
+        fatal_errno("cannot open directory");
+    }
     if (!mkdtemp(clonedir)) {
         fatal_errno("cannot create temporary directory");
     }
+    should_cleanup = 1;
     if (vflags >= 1) {
         fprintf(stderr, "%s: %s/%s\n", PROGNAME, tmpdir, clonedir);
     }
@@ -636,16 +659,10 @@ int main(int argc, char **argv)
     } else {
         git_clone(url, clonedir);
     }
-    if ((parentdir = open(".", O_RDONLY | O_DIRECTORY)) == -1) {
-        fatal_errno("cannot open directory");
-    }
     if (chdir(clonedir) == -1) {
         fatal_errno("cannot change directory");
     }
     generate_tar_file();
-    if (fchdir(parentdir) == -1) {
-        fatal_errno("cannot change directory");
-    }
-    delete_temp_files(clonedir);
+    exit_with_cleanup(0);
     return 0;
 }
