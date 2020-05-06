@@ -141,16 +141,16 @@ static char *outrun0(const char **argv)
     return buf;
 }
 
-static char *chomp(char *str)
+static void remove_final_newline(char *string)
 {
-    char *limit = strchr(str, 0);
+    char *limit;
 
-    if (limit > str) {
+    if ((limit = strchr(string, 0)) > string) {
         if (limit[-1] == '\n') {
-            limit[-1] = 0;
+            limit--;
         }
     }
-    return str;
+    *limit = 0;
 }
 
 static void remove_final_slashes(char *string)
@@ -193,8 +193,11 @@ static void git_show(
 static char *git_rev_parse(const char *git_ref)
 {
     const char *git_argv[] = { "git", "rev-parse", git_ref, 0 };
+    char *out;
 
-    return chomp(outrun0(git_argv));
+    out = outrun0(git_argv);
+    remove_final_newline(out);
+    return out;
 }
 
 static char *git_ls_tree(const char *git_ref)
