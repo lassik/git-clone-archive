@@ -322,13 +322,16 @@ static void generate_tar_tree(const char *hash)
 {
     struct ent *ent;
     char *tree;
+    char *pivot;
 
     tree = git_ls_tree(hash);
     while ((tree = parse_ls_tree_entry(tree, &ent))) {
         if (!strcmp(ent->git_object_type, "blob")) {
             generate_tar_blob(ent);
         } else if (!strcmp(ent->git_object_type, "tree")) {
-            fprintf(stderr, "TODO: tree\n");
+            pivot = path_append(ent->file_name);
+            generate_tar_tree(ent->git_object_hash);
+            path_truncate(pivot);
         } else {
             fprintf(stderr, "warning: skipping %s\n", ent->git_object_type);
         }
