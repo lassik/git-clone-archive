@@ -25,6 +25,7 @@ struct ent {
 };
 
 static unsigned int vflags = 2;
+static int null_device;
 
 static void fatal(const char *msg)
 {
@@ -47,6 +48,8 @@ static void run(const char **argv)
         fatal_errno("cannot fork");
     }
     if (!child) {
+        dup2(null_device, STDOUT_FILENO);
+        close(null_device);
         execvp(argv[0], (char **)argv);
         _exit(126);
     }
@@ -74,6 +77,7 @@ static void outrun(const char **argv, char **out_buf, size_t *out_len)
         dup2(outpipe[1], STDOUT_FILENO);
         close(outpipe[0]);
         close(outpipe[1]);
+        close(null_device);
         execvp(argv[0], (char **)argv);
         _exit(126);
     }
@@ -450,6 +454,9 @@ int main(int argc, char **argv)
     url = argv[1];
     if (isatty(STDOUT_FILENO)) {
         fatal("standard output is a terminal");
+    }
+    if ((null_device = open("/dev/null", O_RDWR)) == -1) {
+        fatal("cannot open /dev/null");
     }
     tmpdir = get_tmpdir();
     if (chdir(tmpdir) == -1) {
