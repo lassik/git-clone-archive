@@ -1,0 +1,125 @@
+.Dd May 6, 2020
+.Dt git2tar 1
+.Os
+.Sh NAME
+.Nm git2tar
+.Nd clone git repository as tar archive
+.Sh SYNOPSIS
+.Nm
+.Op Fl -prefix Ar prefix
+.Ar url
+.Op Ar branch
+.Sh DESCRIPTION
+Creates a
+.Xr tar 1
+archive of the files in a remote
+.Xr git 1
+version control repository. Writes the archive to standard output.
+.Pp
+The archive is not compressed. To compress it, pipe it to a filter
+such as
+.Xr gzip 1 .
+To write the archive to a file, redirect standard output to a file. As
+a precaution,
+.Nm
+will not run if standard output is going to a terminal.
+.Pp
+.Ar url
+is the git repository to read from. It can be a git, ssh, http or
+https URL. Anything that is valid to pass to
+.Xr git-clone 1
+is a valid
+.Ar url .
+.Pp
+.Ar branch
+is the git branch or tag to archive. If not given, the default branch
+is assumed. On most repositories the default branch is
+.Ql master .
+.Pp
+.Nm
+is designed to work with remote repositories. For local ones,
+.Xr git-archive 1
+is probably a better tool.
+.Sh OPTIONS
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl -prefix Ar prefix
+Start each filename in the archive with
+.Ar prefix .
+The default prefix is
+.Ql git2tar/ ,
+so a file
+.Ql hello.c
+in the Git repository becomes
+.Ql git2tar/hello.c
+in the archive. A file
+.Ql src/hello.c
+becomes
+.Ql git2tar/src/hello.c .
+.Pp
+.Ar prefix
+must not start with a slash
+.Pq Ql \&/ .
+For consistency with
+.Xr git-archive 1 ,
+it must end with one.
+.Xr git-archive 1
+actually allows omitting the final slash but in that case the
+filenames will be mushed together with the prefix with no slash in
+between. This behavior is likely a design mistake in
+.Xr git-archive 1 .
+To avoid surprises,
+.Nm
+requires the final slash.
+.Pp
+As a special case, a blank
+.Ar prefix
+is allowed. Beware that this creates a so-called
+.Dq tar bomb
+whose files will explode all over the current directory when extracted
+by an unwary
+.Xr tar 1
+user instead of going neatly into one subdirectory. For this reason
+the default prefix is not blank.
+.It Fl v , -verbose
+Write status messages to standard error. This option can be given
+once, twice or thrice for different levels of detail.
+.It Fl V , -version
+Write version information to standard output and exit.
+.It Fl h, -help
+Write terse usage instructions to standard output and exit.
+.El
+.Sh EXAMPLES
+Typical usage with gzip:
+.Pp
+.Dl $ git2tar --prefix \&"foo/\&" http://foo | gzip > foo.tar.gz.new
+.Dl $ mv -f foo.tar.gz.new foo.tar.gz
+.Pp
+Use a blank prefix and look for a particular file:
+.Pp
+.Dl $ git2tar --prefix \&"\&" http://foo | tar -tf - | grep doc/manual.texi
+.Pp
+.Sh ENVIRONMENT
+.Bl -tag -width TMPDIR
+.It Ev TMPDIR
+Temporary directory. The default is
+.Ql /tmp .
+.Sh IMPLEMENTATION
+.Nm
+uses
+.Ql git clone --bare --depth 1
+to clone the repository into a temporary directory, then
+.Ql git ls-tree
+and
+.Ql git show
+to read files from it. A checkout to a working tree is not done; all
+operations are done on the bare repository. The libgit2 library is not
+used since it has trouble with shallow clones.
+.Sh SEE ALSO
+.Xr git 1 ,
+.Xr git-clone 1 ,
+.Xr git-archive 1
+.Pp
+.Xr tar 1 ,
+.Xr gzip 1 ,
+.Xr bzip2 1
