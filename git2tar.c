@@ -39,10 +39,24 @@ static void fatal_errno(const char *msg)
     exit(2);
 }
 
+static void finish(pid_t child)
+{
+    int status;
+
+    if (waitpid(child, &status, 0) == (pid_t)-1) {
+        fatal_errno("cannot wait for git to finish");
+    }
+    if (!WIFEXITED(status)) {
+        fatal("git crashed");
+    }
+    if (WEXITSTATUS(status) != 0) {
+        fatal("git failed");
+    }
+}
+
 static void run(const char **argv)
 {
     pid_t child;
-    int status;
 
     if ((child = fork()) == (pid_t)-1) {
         fatal_errno("cannot fork");
@@ -53,15 +67,12 @@ static void run(const char **argv)
         execvp(argv[0], (char **)argv);
         _exit(126);
     }
-    if (waitpid(child, &status, 0) == (pid_t)-1) {
-        fatal_errno("cannot wait for git to finish");
-    }
+    finish(child);
 }
 
 static void outrun(const char **argv, char **out_buf, size_t *out_len)
 {
     pid_t child;
-    int status;
     int outpipe[2];
     char *buf;
     size_t buf_cap, buf_len;
@@ -103,9 +114,7 @@ static void outrun(const char **argv, char **out_buf, size_t *out_len)
         buf_len += nread;
     }
     close(outpipe[0]);
-    if (waitpid(child, &status, 0) == (pid_t)-1) {
-        fatal_errno("cannot wait for git to finish");
-    }
+    finish(child);
     *out_buf = buf;
     *out_len = buf_len;
 }
