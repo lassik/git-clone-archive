@@ -153,6 +153,18 @@ static char *chomp(char *str)
     return str;
 }
 
+static void remove_final_slashes(char *string)
+{
+    char *limit;
+
+    for (limit = strchr(string, 0); limit > string; limit--) {
+        if (limit[-1] != '/') {
+            break;
+        }
+    }
+    *limit = 0;
+}
+
 static void git_clone(const char *url, const char *template)
 {
     const char *git_argv[] = { "git", "clone", "--bare", "--depth", "1", "--",
@@ -375,9 +387,13 @@ static void generate_tar_file(void)
 {
     char *hash;
 
+    path_truncate(path);
+    path_append(prefix);
+    remove_final_slashes(path);
     hash = git_rev_parse("HEAD");
     generate_tar_tree(hash);
     free(hash);
+    path_truncate(path);
     write_to_stdout(null_bytes, 512);
     write_to_stdout(null_bytes, 512);
 }
@@ -386,7 +402,6 @@ static char *get_tmpdir(void)
 {
     const char *const_string;
     char *string;
-    char *limit;
 
     if (!(const_string = getenv("TMPDIR"))) {
         const_string = "/tmp";
@@ -394,12 +409,7 @@ static char *get_tmpdir(void)
     if (!(string = strdup(const_string))) {
         fatal("out of memory");
     }
-    for (limit = strchr(string, 0); limit > string; limit--) {
-        if (limit[-1] != '/') {
-            break;
-        }
-    }
-    *limit = 0;
+    remove_final_slashes(string);
     return string;
 }
 
@@ -571,6 +581,21 @@ int main(int argc, char **argv)
     }
     if (*argv) {
         usage();
+    }
+    if (prefix[0]) {
+        if (prefix[0] == '/') {
+            // Leading slashes are not customary in tar archives, and
+            // tar(1) displays a warning that it ignores them.
+            fatal("prefix cannot start with a slash");
+        }
+        if (strchr(prefix, 0)[-1] != '/') {
+            // Requiring a trailing slash may seem bogus. But it's for
+            // consistency with git-archive(1). git-archive(1) acts as
+            // expected if you give it a trailing slash, but gives odd
+            // results if you don't give one. With that precedent, the
+            // least confusing alternative is that we require a slash.
+            fatal("prefix must end with a slash");
+        }
     }
     if (isatty(STDOUT_FILENO)) {
         fatal("standard output is a terminal");
