@@ -165,19 +165,19 @@ static void remove_final_slashes(char *string)
     *limit = 0;
 }
 
-static void git_clone(const char *url, const char *template)
+static void git_clone(const char *url, const char *clonedir)
 {
     const char *git_argv[] = { "git", "clone", "--bare", "--depth", "1", "--",
-        url, template, 0 };
+        url, clonedir, 0 };
 
     run(git_argv);
 }
 
 static void git_clone_branch(
-    const char *url, const char *template, const char *branch)
+    const char *url, const char *clonedir, const char *branch)
 {
     const char *git_argv[] = { "git", "clone", "--bare", "--depth", "1",
-        "--branch", branch, "--", url, template, 0 };
+        "--branch", branch, "--", url, clonedir, 0 };
 
     run(git_argv);
 }
@@ -471,10 +471,10 @@ static void delete_temp_dir(void)
     }
 }
 
-static void delete_temp_files(const char *template)
+static void delete_temp_files(const char *clonedir)
 {
     path_truncate(path);
-    path_append(template);
+    path_append(clonedir);
     delete_temp_ent();
 }
 
@@ -562,7 +562,7 @@ static char **parse_options(char **argv)
 
 int main(int argc, char **argv)
 {
-    char template[] = PROGNAME "-XXXXXXXX";
+    char clonedir[] = PROGNAME "-XXXXXXXX";
     char *tmpdir;
     const char *url;
     static const char *branch;
@@ -608,27 +608,27 @@ int main(int argc, char **argv)
     if (chdir(tmpdir) == -1) {
         fatal_errno("cannot change directory");
     }
-    if (!mkdtemp(template)) {
+    if (!mkdtemp(clonedir)) {
         fatal_errno("cannot create temporary directory");
     }
     if (vflags >= 1) {
-        fprintf(stderr, "%s: %s/%s\n", PROGNAME, tmpdir, template);
+        fprintf(stderr, "%s: %s/%s\n", PROGNAME, tmpdir, clonedir);
     }
     if (branch) {
-        git_clone_branch(url, template, branch);
+        git_clone_branch(url, clonedir, branch);
     } else {
-        git_clone(url, template);
+        git_clone(url, clonedir);
     }
     if ((parentdir = open(".", O_RDONLY | O_DIRECTORY)) == -1) {
         fatal_errno("cannot open directory");
     }
-    if (chdir(template) == -1) {
+    if (chdir(clonedir) == -1) {
         fatal_errno("cannot change directory");
     }
     generate_tar_file();
     if (fchdir(parentdir) == -1) {
         fatal_errno("cannot change directory");
     }
-    delete_temp_files(template);
+    delete_temp_files(clonedir);
     return 0;
 }
