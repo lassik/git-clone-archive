@@ -470,7 +470,13 @@ static void delete_temp_files(const char *template)
 
 static void generic_usage(FILE *stream, int code)
 {
-    fprintf(stream, "usage: %s [-v] [--prefix=<prefix>] <repo> [<tree>]\n",
+    fprintf(stream,
+        "usage: %s [--prefix <prefix>] <url> [<branch>]\n"
+        "\n"
+        "--prefix <prefix>   Add directory to filenames in archive.\n"
+        "-v, --verbose       Write status messages to stderr.\n"
+        "-V, --version       Write version and exit.\n"
+        "-h, --help          Write this usage and exit.\n",
         PROGNAME);
     exit(code);
 }
