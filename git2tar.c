@@ -12,7 +12,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef PROGGIT
+#define PROGGIT ""
+#endif
+
+#ifndef PROGNAME
 #define PROGNAME "git2tar"
+#endif
+
+#define PROGRELEASE "0.0.0"
 
 #define TAR_UID 0
 #define TAR_GID 0
@@ -24,7 +32,8 @@ struct ent {
     char *file_name;
 };
 
-static unsigned int vflags = 2;
+static const char *prefix = PROGNAME "/";
+static unsigned int vflags;
 static int null_device;
 
 static void fatal(const char *msg)
@@ -148,6 +157,15 @@ static void git_clone(const char *url, const char *template)
 {
     const char *git_argv[] = { "git", "clone", "--bare", "--depth", "1", "--",
         url, template, 0 };
+
+    run(git_argv);
+}
+
+static void git_clone_branch(
+    const char *url, const char *template, const char *branch)
+{
+    const char *git_argv[] = { "git", "clone", "--bare", "--depth", "1",
+        "--branch", branch, "--", url, template, 0 };
 
     run(git_argv);
 }
@@ -450,17 +468,104 @@ static void delete_temp_files(const char *template)
     delete_temp_ent();
 }
 
+static void generic_usage(FILE *stream, int code)
+{
+    fprintf(stream, "usage: %s [-v] [--prefix=<prefix>] <repo> [<tree>]\n",
+        PROGNAME);
+    exit(code);
+}
+
+static void usage(void) { generic_usage(stderr, 2); }
+
+static void version(void)
+{
+    printf("%s %s\n", PROGNAME, PROGRELEASE);
+    printf("commit %s\n", PROGGIT[0] ? PROGGIT : "unknown");
+    exit(0);
+}
+
+static char **parse_short_option(int option, char **argv)
+{
+    if (option == 'h') {
+        generic_usage(stdout, 0);
+    } else if (option == 'V') {
+        version();
+    } else if (option == 'v') {
+        vflags++;
+    } else {
+        usage();
+    }
+    return argv;
+}
+
+static char **parse_long_option(const char *option, char **argv)
+{
+    if (!strcmp(option, "help")) {
+        generic_usage(stdout, 0);
+    } else if (!strcmp(option, "version")) {
+        version();
+    } else if (!strcmp(option, "verbose")) {
+        vflags++;
+    } else if (!strcmp(option, "prefix")) {
+        if (!*argv) {
+            usage();
+        }
+        prefix = *argv++;
+    } else {
+        usage();
+    }
+    return argv;
+}
+
+static char **parse_options(char **argv)
+{
+    const char *arg;
+    int short_option;
+
+    while ((arg = *argv)) {
+        if (arg[0] != '-') {
+            break;
+        }
+        argv++;
+        if (arg[1] == '-') {
+            if (arg[2] == '-') {
+                usage();
+            }
+            if (!arg[2]) {
+                break;
+            }
+            argv = parse_long_option(&arg[2], argv);
+        } else {
+            for (arg++; (short_option = *arg); arg++) {
+                argv = parse_short_option(short_option, argv);
+            }
+        }
+    }
+    return argv;
+}
+
 int main(int argc, char **argv)
 {
     char template[] = PROGNAME "-XXXXXXXX";
     char *tmpdir;
     const char *url;
+    static const char *branch;
     int parentdir;
 
-    if (argc != 2) {
-        fatal("usage");
+    (void)argc;
+    argv++;
+    argv = parse_options(argv);
+    if (*argv) {
+        url = *argv++;
+    } else {
+        usage();
     }
-    url = argv[1];
+    if (*argv) {
+        branch = *argv++;
+    }
+    if (*argv) {
+        usage();
+    }
     if (isatty(STDOUT_FILENO)) {
         fatal("standard output is a terminal");
     }
@@ -478,7 +583,11 @@ int main(int argc, char **argv)
     if (vflags >= 1) {
         fprintf(stderr, "%s: %s/%s\n", PROGNAME, tmpdir, template);
     }
-    git_clone(url, template);
+    if (branch) {
+        git_clone_branch(url, template, branch);
+    } else {
+        git_clone(url, template);
+    }
     if ((parentdir = open(".", O_RDONLY | O_DIRECTORY)) == -1) {
         fatal_errno("cannot open directory");
     }
