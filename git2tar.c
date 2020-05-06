@@ -368,6 +368,7 @@ static void generate_tar_blob(struct ent *ent)
     write_to_stdout(tar_header, 512);
     write_to_stdout(blob, blobsize);
     write_to_stdout(null_bytes, 512 - (blobsize % 512));
+    free(blob);
 }
 
 static void generate_tar_tree(const char *hash)
