@@ -59,6 +59,19 @@ static void fatal_errno(const char *msg)
     exit_with_cleanup(2);
 }
 
+static void announce_argv(const char **argv)
+{
+    const char *arg;
+
+    if ((vflags >= 3) && argv[0]) {
+        fprintf(stderr, "> %s", argv[0]);
+        for (argv++; (arg = *argv); argv++) {
+            fprintf(stderr, " %s", arg);
+        }
+        fprintf(stderr, "\n");
+    }
+}
+
 static void finish(pid_t child)
 {
     int status;
@@ -78,6 +91,7 @@ static void run(const char **argv)
 {
     pid_t child;
 
+    announce_argv(argv);
     if ((child = fork()) == (pid_t)-1) {
         fatal_errno("cannot fork");
     }
@@ -98,6 +112,7 @@ static void outrun(const char **argv, char **out_buf, size_t *out_len)
     size_t buf_cap, buf_len;
     ssize_t nread;
 
+    announce_argv(argv);
     if (pipe(outpipe) == -1) {
         fatal_errno("cannot create pipe");
     }
@@ -366,6 +381,10 @@ static void generate_tar_blob(struct ent *ent)
     memset(tar_header, 0, 512);
     tar = tar_header;
     pivot = path_append(ent->file_name);
+    if (vflags >= 2) {
+        fprintf(stderr, "%s -> %s (%zu bytes)\n", ent->git_object_hash, path,
+            blobsize);
+    }
     tar_string(100, path);
     path_truncate(pivot);
     tar_octal(8, ent->unix_file_mode);
@@ -397,6 +416,9 @@ static void generate_tar_tree(const char *hash)
     char *tree;
     char *pivot;
 
+    if (vflags >= 2) {
+        fprintf(stderr, "%s -> %s (directory)\n", hash, path);
+    }
     tree = git_ls_tree(hash);
     while ((tree = parse_ls_tree_entry(tree, &ent))) {
         if (!strcmp(ent->git_object_type, "blob")) {
@@ -454,14 +476,14 @@ static void delete_temp_ent(void)
     }
     if (S_ISDIR(st.st_mode)) {
         delete_temp_dir();
-        if (vflags >= 2) {
-            fprintf(stderr, "rmdir %s\n", path);
+        if (vflags >= 3) {
+            fprintf(stderr, "rmdir  %s\n", path);
         }
         if (rmdir(path) == -1) {
             fatal_errno("cannot delete temp directory");
         }
     } else {
-        if (vflags >= 2) {
+        if (vflags >= 3) {
             fprintf(stderr, "unlink %s\n", path);
         }
         if (unlink(path) == -1) {
