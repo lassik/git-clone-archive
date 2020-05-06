@@ -71,7 +71,7 @@ static void outrun(const char **argv, char **out_buf, size_t *out_len)
         fatal_errno("cannot fork");
     }
     if (!child) {
-        dup2(outpipe[1], 1);
+        dup2(outpipe[1], STDOUT_FILENO);
         close(outpipe[0]);
         close(outpipe[1]);
         execvp(argv[0], (char **)argv);
@@ -88,12 +88,14 @@ static void outrun(const char **argv, char **out_buf, size_t *out_len)
         }
         nread = read(outpipe[0], buf + buf_len, buf_cap - 1 - buf_len);
         if (nread == (ssize_t)-1) {
-            if (errno == EINTR)
+            if (errno == EINTR) {
                 continue;
+            }
             fatal_errno("cannot read from subprocess");
         }
-        if (!nread)
+        if (!nread) {
             break;
+        }
         buf_len += nread;
     }
     close(outpipe[0]);
@@ -224,30 +226,29 @@ static void path_truncate(char *limit)
 
 static char *path_append(const char *name)
 {
-    char *a;
-    char *b;
+    char *pivot;
+    char *add;
     int room;
 
-    a = b = strchr(path, 0);
-    if (b > path) {
-        *b++ = '/';
+    pivot = add = strchr(path, 0);
+    if (add > path) {
+        *add++ = '/';
     }
-    room = sizeof(path) - (b - path);
-    if (snprintf(b, room, "%s", name) >= room) {
+    room = sizeof(path) - (add - path);
+    if (snprintf(add, room, "%s", name) >= room) {
         fatal("pathname too long");
     }
-    return a;
+    return pivot;
 }
 
 static unsigned long sum_bytes(unsigned char *bytes, size_t nbyte)
 {
-    unsigned long ans = 0;
+    unsigned long sum = 0;
 
     for (; nbyte; nbyte--) {
-        ans += *bytes++;
-        ans %= 01000000UL;
+        sum += *bytes++;
     }
-    return ans;
+    return sum;
 }
 
 static char null_bytes[512];
@@ -269,14 +270,13 @@ static void tar_string(size_t width, const char *value)
 
 static void tar_octal(size_t width, unsigned long value)
 {
-    char digits[16];
-    size_t ndigit, leading_zeros;
+    size_t ndigit, nzero;
+    char digits[width];
 
     if ((ndigit = snprintf(digits, sizeof(digits), "%lo", value)) >= width) {
         fatal("tar limit exceeded");
     }
-    leading_zeros = width - 1 - ndigit;
-    for (; leading_zeros; leading_zeros--) {
+    for (nzero = width - 1 - ndigit; nzero; nzero--) {
         *tar++ = '0';
     }
     memcpy(tar, digits, ndigit);
@@ -303,8 +303,9 @@ static void generate_tar_blob(struct ent *ent)
     tar_octal(12, blobsize);
     tar_octal(12, 0); // mtime
     checksum = tar;
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < 8; i++) {
         *tar++ = ' ';
+    }
     *tar++ = '0';
     tar_string(100, "");
     tar_string(8, "ustar  ");
@@ -312,7 +313,7 @@ static void generate_tar_blob(struct ent *ent)
     tar_string(32, "root");
     tar_string(183, "");
     tar = checksum;
-    tar_octal(7, sum_bytes((unsigned char *)tar_header, 512));
+    tar_octal(7, sum_bytes((unsigned char *)tar_header, 512) % 01000000UL);
     write_to_stdout(tar_header, 512);
     write_to_stdout(blob, blobsize);
     write_to_stdout(null_bytes, 512 - (blobsize % 512));
@@ -363,8 +364,9 @@ static char *get_tmpdir(void)
         fatal("out of memory");
     }
     for (limit = strchr(string, 0); limit > string; limit--) {
-        if (limit[-1] != '/')
+        if (limit[-1] != '/') {
             break;
+        }
     }
     *limit = 0;
     return string;
@@ -409,11 +411,13 @@ static void delete_temp_dir(void)
     }
     for (;;) {
         errno = 0;
-        if (!(d = readdir(dir)))
+        if (!(d = readdir(dir))) {
             break;
+        }
         name = d->d_name;
-        if (!strcmp(name, ".") || !strcmp(name, ".."))
+        if (!strcmp(name, ".") || !strcmp(name, "..")) {
             continue;
+        }
         pivot = path_append(name);
         delete_temp_ent();
         path_truncate(pivot);
@@ -435,7 +439,7 @@ static void delete_temp_files(const char *template)
 
 int main(int argc, char **argv)
 {
-    char template[] = "git2tar-XXXXXXXX";
+    char template[] = PROGNAME "-XXXXXXXX";
     char *tmpdir;
     const char *url;
     int parentdir;
