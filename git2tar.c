@@ -455,6 +455,7 @@ int main(int argc, char **argv)
     if (isatty(STDOUT_FILENO)) {
         fatal("standard output is a terminal");
     }
+    umask(0077);
     if ((null_device = open("/dev/null", O_RDWR)) == -1) {
         fatal("cannot open /dev/null");
     }
