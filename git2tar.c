@@ -117,16 +117,21 @@ static void outrun(const char **argv, char **out_buf, size_t *out_len)
     buf_len = 0;
     buf_cap = 64;
     for (;;) {
-        buf_cap *= 2;
+        if (buf_cap - 1 - buf_len < 1) {
+            buf_cap *= 2;
+        }
         if (!(buf = realloc(buf, buf_cap))) {
             fatal("out of memory");
         }
-        nread = read(outpipe[0], buf + buf_len, buf_cap - 1 - buf_len);
-        if (nread == (ssize_t)-1) {
-            if (errno == EINTR) {
-                continue;
+        for (;;) {
+            nread = read(outpipe[0], buf + buf_len, buf_cap - 1 - buf_len);
+            if (nread == (ssize_t)-1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                fatal_errno("cannot read from subprocess");
             }
-            fatal_errno("cannot read from subprocess");
+            break;
         }
         if (!nread) {
             break;
