@@ -565,7 +565,7 @@ int main(int argc, char **argv)
     char clonedir[] = PROGNAME "-XXXXXXXX";
     char *tmpdir;
     const char *url;
-    static const char *branch;
+    const char *branch;
     int parentdir;
 
     (void)argc;
@@ -578,6 +578,8 @@ int main(int argc, char **argv)
     }
     if (*argv) {
         branch = *argv++;
+    } else {
+        branch = 0;
     }
     if (*argv) {
         usage();
