@@ -489,6 +489,7 @@ static void delete_temp_files(const char *clonedir)
     path_truncate(path);
     path_append(clonedir);
     delete_temp_ent();
+    path_truncate(path);
 }
 
 static void generic_usage(FILE *stream, int code)
