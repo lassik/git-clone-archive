@@ -558,8 +558,11 @@ static void usage(void) { generic_usage(stderr, 2); }
 
 static void version(void)
 {
-    printf("%s %s\n", PROGNAME, PROGRELEASE);
-    printf("commit %s\n", PROGGIT[0] ? PROGGIT : "unknown");
+    printf("%s %s", PROGNAME, PROGRELEASE);
+    if (PROGGIT[0]) {
+        printf(" (git describe: %s)", PROGGIT);
+    }
+    printf("\n");
     exit_with_cleanup(0);
 }
 
