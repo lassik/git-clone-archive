@@ -623,12 +623,22 @@ static char **parse_options(char **argv)
     return argv;
 }
 
+static void make_pledge(void)
+{
+#ifdef __OpenBSD__
+    if (pledge("stdio rpath cpath tmppath proc exec", 0) == -1) {
+        fatal_errno("cannot pledge");
+    }
+#endif
+}
+
 int main(int argc, char **argv)
 {
     char *tmpdir;
     const char *url;
     const char *branch;
 
+    make_pledge();
     (void)argc;
     argv++;
     argv = parse_options(argv);
