@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -525,10 +526,16 @@ static void delete_temp_dir(void)
 
 static void cleanup(void)
 {
+    int status;
+
     if (!should_cleanup) {
         return;
     }
     should_cleanup = 0;
+    if (vflags >= 1) {
+        fprintf(stderr, "%s: waiting for subprocesses to exit\n", PROGNAME);
+    }
+    while (wait(&status) > 0) { }
     if (vflags >= 1) {
         fprintf(stderr, "%s: cleaning up temp files\n", PROGNAME);
     }
@@ -626,6 +633,23 @@ static char **parse_options(char **argv)
     return argv;
 }
 
+static void control_c_handler(int signo)
+{
+    (void)signo;
+    fprintf(stderr, "%s: asked to exit; cleaning up\n", PROGNAME);
+    cleanup();
+}
+
+static void add_signal_handlers(void)
+{
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = control_c_handler;
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &sa, 0);
+}
+
 static void make_pledge(void)
 {
 #ifdef __OpenBSD__
@@ -691,6 +715,7 @@ int main(int argc, char **argv)
         fatal_errno("cannot create temporary directory");
     }
     should_cleanup = 1;
+    add_signal_handlers();
     if (vflags >= 1) {
         fprintf(stderr, "%s: %s/%s\n", PROGNAME, tmpdir, clonedir);
     }
