@@ -20,7 +20,7 @@
 #define PROGNAME "git2tar"
 #endif
 
-#define PROGRELEASE "0.1.0"
+#define PROGRELEASE "0.2.0"
 
 #define TAR_UID 0
 #define TAR_GID 0
