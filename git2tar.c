@@ -587,7 +587,8 @@ static char **parse_short_option(int option, char **argv)
     return argv;
 }
 
-static char **parse_long_option(const char *option, char **argv)
+static char **parse_long_option(
+    const char *option, const char *arg, char **argv)
 {
     if (!strcmp(option, "help")) {
         generic_usage(stdout, 0);
@@ -596,11 +597,18 @@ static char **parse_long_option(const char *option, char **argv)
     } else if (!strcmp(option, "verbose")) {
         vflags++;
     } else if (!strcmp(option, "prefix")) {
-        if (!*argv) {
+        if (arg) {
+            prefix = arg;
+            arg = 0;
+        } else if (*argv) {
+            prefix = *argv++;
+        } else {
             usage();
         }
-        prefix = *argv++;
     } else {
+        usage();
+    }
+    if (arg) {
         usage();
     }
     return argv;
@@ -609,6 +617,8 @@ static char **parse_long_option(const char *option, char **argv)
 static char **parse_options(char **argv)
 {
     const char *arg;
+    char *arg_without_value;
+    char *sep;
     int short_option;
 
     while ((arg = *argv)) {
@@ -623,7 +633,16 @@ static char **parse_options(char **argv)
             if (!arg[2]) {
                 break;
             }
-            argv = parse_long_option(&arg[2], argv);
+            arg += 2;
+            if ((sep = strchr(arg, '='))) {
+                if (!(arg_without_value = strndup(arg, sep - arg))) {
+                    fatal("out of memory");
+                }
+                argv = parse_long_option(arg_without_value, sep + 1, argv);
+                free(arg_without_value);
+            } else {
+                argv = parse_long_option(arg, 0, argv);
+            }
         } else {
             for (arg++; (short_option = *arg); arg++) {
                 argv = parse_short_option(short_option, argv);
