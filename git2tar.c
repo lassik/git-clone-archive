@@ -617,8 +617,8 @@ static char **parse_long_option(
 static char **parse_options(char **argv)
 {
     const char *arg;
+    const char *sep;
     char *arg_without_value;
-    char *sep;
     int short_option;
 
     while ((arg = *argv)) {
