@@ -44,13 +44,13 @@ is probably a better tool.
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl -prefix Ar prefix
-Start each filename in the archive with
-.Ar prefix .
-The default prefix is
+Add
+.Ar prefix
+to the front of each filename in the archive. The default prefix is
 .Ql git2tar/ ,
 so a file
 .Ql hello.c
-in the Git repository becomes
+in the git repository becomes
 .Ql git2tar/hello.c
 in the archive. A file
 .Ql src/hello.c
@@ -62,7 +62,7 @@ must not start with a slash
 .Pq Ql \&/ .
 For consistency with
 .Xr git-archive 1 ,
-it must end with one.
+it must end with a slash.
 .Xr git-archive 1
 actually allows omitting the final slash but in that case the
 filenames will be mushed together with the prefix with no slash in
@@ -84,6 +84,9 @@ the default prefix is not blank.
 .It Fl v , -verbose
 Write status messages to standard error. This option can be given
 once, twice or thrice for different levels of detail.
+.Pp
+By default, only error and warning messages are written. To silence
+even those messages, redirect standard error to /dev/null.
 .It Fl V , -version
 Write version information to standard output and exit.
 .It Fl h, -help
