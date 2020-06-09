@@ -656,7 +656,7 @@ static void control_c_handler(int signo)
 {
     (void)signo;
     fprintf(stderr, "%s: asked to exit; cleaning up\n", PROGNAME);
-    cleanup();
+    exit_with_cleanup(2);
 }
 
 static void add_signal_handlers(void)
