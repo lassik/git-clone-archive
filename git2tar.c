@@ -747,6 +747,6 @@ int main(int argc, char **argv)
         fatal_errno("cannot change directory");
     }
     generate_tar_file();
-    exit_with_cleanup(0);
+    cleanup();
     return 0;
 }
