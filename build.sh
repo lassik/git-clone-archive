@@ -7,4 +7,4 @@ git="$(git describe --tags --always --dirty 2>/dev/null || true)"
 clang \
     -Wall -Wextra -pedantic -std=gnu99 -fsanitize=address \
     -D PROGGIT="\"$git\"" \
-    -o git2tar git2tar.c
+    -o git-clone-tar git-clone-tar.c
