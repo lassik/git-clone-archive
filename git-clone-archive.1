@@ -1,8 +1,8 @@
 .Dd May 6, 2020
-.Dt git-clone-tar 1
+.Dt git-clone-archive 1
 .Os
 .Sh NAME
-.Nm git-clone-tar
+.Nm git-clone-archive
 .Nd clone git repository as tar archive
 .Sh SYNOPSIS
 .Nm
@@ -47,15 +47,15 @@ The options are as follows:
 Add
 .Ar prefix
 to the front of each filename in the archive. The default prefix is
-.Ql git-clone-tar/ ,
+.Ql git-clone-archive/ ,
 so a file
 .Ql hello.c
 in the git repository becomes
-.Ql git-clone-tar/hello.c
+.Ql git-clone-archive/hello.c
 in the archive. A file
 .Ql src/hello.c
 becomes
-.Ql git-clone-tar/src/hello.c .
+.Ql git-clone-archive/src/hello.c .
 .Pp
 .Ar prefix
 must not start with a slash
@@ -95,12 +95,12 @@ Write terse usage instructions to standard output and exit.
 .Sh EXAMPLES
 Typical usage with gzip:
 .Pp
-.Dl $ git-clone-tar --prefix \&"foo/\&" http://foo | gzip > foo.tar.gz.new
+.Dl $ git-clone-archive --prefix \&"foo/\&" http://foo | gzip > foo.tar.gz.new
 .Dl $ mv -f foo.tar.gz.new foo.tar.gz
 .Pp
 Use a blank prefix and look for a particular file:
 .Pp
-.Dl $ git-clone-tar --prefix \&"\&" http://foo | tar -tf - | grep doc/manual.texi
+.Dl $ git-clone-archive --prefix \&"\&" http://foo | tar -tf - | grep doc/manual.texi
 .Pp
 .Sh ENVIRONMENT
 .Bl -tag -width TMPDIR

@@ -18,7 +18,7 @@
 #endif
 
 #ifndef PROGNAME
-#define PROGNAME "git-clone-tar"
+#define PROGNAME "git-clone-archive"
 #endif
 
 #define PROGRELEASE "0.2.0"
