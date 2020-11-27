@@ -200,8 +200,9 @@ static void remove_final_slashes(char *string)
 
 static void git_clone(const char *url, const char *clonedir)
 {
-	const char *git_argv[] = { "git", "clone", "--bare", "--depth", "1",
-				   "--",  url,	   clonedir, 0 };
+	const char *git_argv[] = { "git",     "clone", "--quiet", "--bare",
+				   "--depth", "1",     "--",	  url,
+				   clonedir,  0 };
 
 	run(git_argv);
 }
@@ -209,9 +210,9 @@ static void git_clone(const char *url, const char *clonedir)
 static void git_clone_branch(const char *url, const char *clonedir,
 			     const char *branch)
 {
-	const char *git_argv[] = { "git", "clone",    "--bare", "--depth",
-				   "1",	  "--branch", branch,	"--",
-				   url,	  clonedir,   0 };
+	const char *git_argv[] = { "git",     "clone", "--quiet",  "--bare",
+				   "--depth", "1",     "--branch", branch,
+				   "--",      url,     clonedir,   0 };
 
 	run(git_argv);
 }
